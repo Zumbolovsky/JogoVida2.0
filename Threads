@@ -1,0 +1,30 @@
+
+public class Threads extends Thread {
+
+    int ID, size, tamanho;
+    ContadorSincronizado synchroC;
+    BooleanoSincronizado synchroB;
+
+    public Threads(int N1, int N2, int N3, ContadorSincronizado SC, BooleanoSincronizado SB) {
+        this.ID = N1;
+        this.size = N2;
+        this.tamanho = N3;
+        this.synchroC = SC;
+        this.synchroB = SB;
+    }
+
+    @Override
+    public void run() {
+        for (int i = 0; i < JogoVida.nGeracoes; i++) {
+            synchronized (synchroB) {
+                synchroB.setBooleano(false);
+                JogoVida.StartGeneration(Dividir(size) * ID, synchroC);
+                synchroB.setBooleano(true);
+            }
+        }
+    }
+    
+    private int Dividir(int n) {
+        return ((int) tamanho / n);
+    }
+}

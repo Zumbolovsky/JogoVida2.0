@@ -1,0 +1,10 @@
+public class BooleanoSincronizado {
+    private boolean ok = true;    
+    public synchronized void setBooleano(boolean x) {
+        this.ok = x;
+    }
+    
+    public synchronized boolean getBooleano() {
+        return ok;
+    }
+}

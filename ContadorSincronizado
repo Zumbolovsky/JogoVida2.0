@@ -1,0 +1,11 @@
+public class ContadorSincronizado {
+    
+    private int c;    
+    public synchronized void setContador(int x) {
+        this.c = x;
+    }
+    
+    public synchronized int getContador() {
+        return c;
+    }
+}

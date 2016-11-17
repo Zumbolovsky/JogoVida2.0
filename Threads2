@@ -1,0 +1,31 @@
+public class Threads extends Thread{
+
+    int ID, size, tamanho;
+    BooleanoSincronizado synchroB;
+
+    public Threads(int indice, int threads, int N3, BooleanoSincronizado SB) {
+        this.ID = indice;
+        this.size = threads;
+        
+        this.tamanho = N3;
+        this.synchroB = SB;
+    }
+
+    @Override
+    public void run() {
+        for (int i = 0; i < JogoVida.nGeracoes; i++) {
+            JogoVida.StartGeneration(Dividir(size), ID, synchroB);
+        }
+        while (JogoVida.lockCont != 0) {
+        }
+        JogoVida.lockCont = size;
+    }
+    
+    public static void Decrementar() {
+        JogoVida.lockCont--;
+    }
+    
+    private int Dividir(int n) {
+        return ((int) tamanho / n);
+    }
+}

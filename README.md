@@ -1,8 +1,8 @@
-
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.PrintStream;
 import java.util.Scanner;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class JogoVida {
 
@@ -13,29 +13,30 @@ public class JogoVida {
     static int[][] matrizA;
     static int[][] matrizB;
     static Scanner entrada;
+    static ReentrantLock lockContador = new ReentrantLock(true);
+
 
     public static void main(String[] args) throws InterruptedException {
         //entrada (.txt + quantidade de geracoes)
         try {
-            ContadorSincronizado SyncC = new ContadorSincronizado();
             BooleanoSincronizado SyncB = new BooleanoSincronizado();
-            Input(args[0]);
-            nGeracoes = Integer.parseInt(args[1]);
+            Input(/*args[0]*/"teste.txt");
+            nGeracoes = Integer.parseInt(/*args[1]*/"1000");
             LoadMatriz();
-            nThreads = Integer.parseInt(args[2]);
-            SyncC.setContador(nThreads);
+            nThreads = Integer.parseInt(/*args[2]*/"2");
+            SyncB.setBooleano(true);
 
             switch (nThreads) {
                 case 1:
                     for (int i = 0; i < nGeracoes; i++) {
-                        StartGeneration(0, SyncC);
+                        StartGenerationSequencial();
                     }
                     break;
                 case 2:
                 case 4:
                     Threads t[] = new Threads[nThreads];
                     for (int i = 0; i < nThreads; i++) {
-                        t[i] = new Threads(i, nThreads, m, SyncC, SyncB);
+                        t[i] = new Threads(i, nThreads, m, SyncB);
                     }
                     for (int j = 0; j < nThreads; j++) {
                         t[j].start();
@@ -55,7 +56,7 @@ public class JogoVida {
         }
     }
 
-    static void Input(String txt) throws FileNotFoundException {
+    private static void Input(String txt) throws FileNotFoundException {
         entrada = new Scanner(new File(txt));
 
         m = Integer.parseInt(entrada.nextLine());
@@ -76,11 +77,8 @@ public class JogoVida {
         }
     }
 
-    protected static void StartGeneration(int n, ContadorSincronizado Sync) {
-        if (nThreads == 1) {
-            Sync.setContador(0);
-        }
-        for (int i = n; i < m; i++) {
+    private static void StartGenerationSequencial() {
+        for (int i = 0; i < m; i++) {
             for (int j = 0; j < m; j++) {
                 //Primeira linha
                 if (i == 0) {
@@ -190,82 +188,84 @@ public class JogoVida {
                     }
                 } //linhas do meio, aqui teram 3 formas diferente j == 0, j == m - 1, outros
                 else //meio && primeiraColuna
-                if (j == 0) {
-                    //cima
-                    if (matrizA[i - 1][j] == 1) {
-                        contLive++;
-                    }
-                    //cimaDireita
-                    if (matrizA[i - 1][j + 1] == 1) {
-                        contLive++;
-                    }
-                    //Direita
-                    if (matrizA[i][j + 1] == 1) {
-                        contLive++;
-                    }
-                    //Baixo
-                    if (matrizA[i + 1][j] == 1) {
-                        contLive++;
-                    }
-                    //BaixoDireita
-                    if (matrizA[i + 1][j + 1] == 1) {
-                        contLive++;
-                    }
-                } //Meio && Ultima Coluna
-                else if (j == m - 1) {
-                    //cima
-                    if (matrizA[i - 1][j] == 1) {
-                        contLive++;
-                    }
-                    //cimaEsquerda
-                    if (matrizA[i - 1][j - 1] == 1) {
-                        contLive++;
-                    }
-                    //Esquerda
-                    if (matrizA[i][j - 1] == 1) {
-                        contLive++;
-                    }
-                    //Baixo
-                    if (matrizA[i + 1][j] == 1) {
-                        contLive++;
-                    }
-                    //BaixoEsquerda
-                    if (matrizA[i + 1][j - 1] == 1) {
-                        contLive++;
-                    }
-                } //Meio && !primeiraColuna && !ultimaColuna
-                else {
-                    //Cima
-                    if (matrizA[i - 1][j] == 1) {
-                        contLive++;
-                    }
-                    //CimaEsquerda
-                    if (matrizA[i - 1][j - 1] == 1) {
-                        contLive++;
-                    }
-                    //CimaDireita
-                    if (matrizA[i - 1][j + 1] == 1) {
-                        contLive++;
-                    }
-                    //Esquerda
-                    if (matrizA[i][j - 1] == 1) {
-                        contLive++;
-                    }
-                    //Direita
-                    if (matrizA[i][j + 1] == 1) {
-                        contLive++;
-                    }
-                    //Baixo
-                    if (matrizA[i + 1][j] == 1) {
-                        contLive++;
-                    }
-                    //BaixoEsquerda
-                    if (matrizA[i + 1][j - 1] == 1) {
-                        contLive++;
-                    }
-                    //BaixoDireita
-                    if (matrizA[i + 1][j + 1] == 1) {
-                        contLive++;
+                {
+                    if (j == 0) {
+                        //cima
+                        if (matrizA[i - 1][j] == 1) {
+                            contLive++;
+                        }
+                        //cimaDireita
+                        if (matrizA[i - 1][j + 1] == 1) {
+                            contLive++;
+                        }
+                        //Direita
+                        if (matrizA[i][j + 1] == 1) {
+                            contLive++;
+                        }
+                        //Baixo
+                        if (matrizA[i + 1][j] == 1) {
+                            contLive++;
+                        }
+                        //BaixoDireita
+                        if (matrizA[i + 1][j + 1] == 1) {
+                            contLive++;
+                        }
+                    } //Meio && Ultima Coluna
+                    else if (j == m - 1) {
+                        //cima
+                        if (matrizA[i - 1][j] == 1) {
+                            contLive++;
+                        }
+                        //cimaEsquerda
+                        if (matrizA[i - 1][j - 1] == 1) {
+                            contLive++;
+                        }
+                        //Esquerda
+                        if (matrizA[i][j - 1] == 1) {
+                            contLive++;
+                        }
+                        //Baixo
+                        if (matrizA[i + 1][j] == 1) {
+                            contLive++;
+                        }
+                        //BaixoEsquerda
+                        if (matrizA[i + 1][j - 1] == 1) {
+                            contLive++;
+                        }
+                    } //Meio && !primeiraColuna && !ultimaColuna
+                    else {
+                        //Cima
+                        if (matrizA[i - 1][j] == 1) {
+                            contLive++;
+                        }
+                        //CimaEsquerda
+                        if (matrizA[i - 1][j - 1] == 1) {
+                            contLive++;
+                        }
+                        //CimaDireita
+                        if (matrizA[i - 1][j + 1] == 1) {
+                            contLive++;
+                        }
+                        //Esquerda
+                        if (matrizA[i][j - 1] == 1) {
+                            contLive++;
+                        }
+                        //Direita
+                        if (matrizA[i][j + 1] == 1) {
+                            contLive++;
+                        }
+                        //Baixo
+                        if (matrizA[i + 1][j] == 1) {
+                            contLive++;
+                        }
+                        //BaixoEsquerda
+                        if (matrizA[i + 1][j - 1] == 1) {
+                            contLive++;
+                        }
+                        //BaixoDireita
+                        if (matrizA[i + 1][j + 1] == 1) {
+                            contLive++;
+                        }
                     }
                 }
                 //validar o resultado e passar pra matrizB
@@ -276,27 +276,23 @@ public class JogoVida {
                  - Se a celula esta MORTA e tem menos de 2 ou mais de 3 vizinhos vivos ela continua MORTA.
                  */
                 //validacoes de viva
-                synchronized (Sync) {
-                    Sync.setContador(Sync.getContador() - 1);
-                    if (matrizA[i][j] == 1) {
-                        if (contLive < 2 || contLive > 3) {
-                            matrizB[i][j] = 0;
-                        } else if (contLive == 2 || contLive == 3) {
-                            matrizB[i][j] = 1;
-                        }
-                    } //validacoes de morta
-                    else if (contLive == 3) {
-                        matrizB[i][j] = 1;
-                    } else {
+                if (matrizA[i][j] == 1) {
+                    if (contLive < 2 || contLive > 3) {
                         matrizB[i][j] = 0;
+                    } else if (contLive == 2 || contLive == 3) {
+                        matrizB[i][j] = 1;
                     }
+                } //validacoes de morta
+                else if (contLive == 3) {
+                    matrizB[i][j] = 1;
+                } else {
+                    matrizB[i][j] = 0;
                 }
                 contLive = 0;
             }
         }
         matrizA = matrizB;
         matrizB = new int[m][m];
-
     }
 
     private static void Write() throws FileNotFoundException {
@@ -316,5 +312,4 @@ public class JogoVida {
             System.out.println();
         }
     }
-
 }

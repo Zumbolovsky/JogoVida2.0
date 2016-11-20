@@ -1,8 +1,9 @@
+
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.PrintStream;
 import java.util.Scanner;
-import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.CountDownLatch;
 
 public class JogoVida {
 
@@ -13,18 +14,17 @@ public class JogoVida {
     static int[][] matrizA;
     static int[][] matrizB;
     static Scanner entrada;
-    static ReentrantLock lockContador = new ReentrantLock(true);
-
+    static CountDownLatch lockContador;
+    static int lockCont = 0;
 
     public static void main(String[] args) throws InterruptedException {
         //entrada (.txt + quantidade de geracoes)
         try {
-            BooleanoSincronizado SyncB = new BooleanoSincronizado();
             Input(/*args[0]*/"teste.txt");
             nGeracoes = Integer.parseInt(/*args[1]*/"1000");
             LoadMatriz();
             nThreads = Integer.parseInt(/*args[2]*/"2");
-            SyncB.setBooleano(true);
+            lockContador = new CountDownLatch(nThreads);
 
             switch (nThreads) {
                 case 1:
@@ -34,15 +34,18 @@ public class JogoVida {
                     break;
                 case 2:
                 case 4:
-                    Threads t[] = new Threads[nThreads];
-                    for (int i = 0; i < nThreads; i++) {
-                        t[i] = new Threads(i, nThreads, m, SyncB);
-                    }
-                    for (int j = 0; j < nThreads; j++) {
-                        t[j].start();
-                    }
-                    for (int j = 0; j < nThreads; j++) {
-                        t[j].join();
+                    for (int i = 0; i < nGeracoes; i++) {
+                        Threads t[] = new Threads[nThreads];
+                        for (int k = 0; k < nThreads; k++) {
+                            t[k] = new Threads(k, nThreads, m);
+                        }
+                        lockContador = new CountDownLatch(nThreads);
+                        for (int j = 0; j < nThreads; j++) {
+                            t[j].start();
+                        }
+                        for (int j = 0; j < nThreads; j++) {
+                            t[j].join();
+                        }
                     }
                     break;
                 default:

@@ -1,41 +1,22 @@
 public class Threads extends Thread {
 
-    int ID, size, tamanho, contAlive, lockCont;
-    BooleanoSincronizado synchroB;
+    int[][] matrizC;
+    int ID, size, tamanho, contAlive;
 
-    public Threads(int indice, int threads, int tamMat, BooleanoSincronizado SB) {
+    public Threads(int indice, int threads, int tamMat) {
         this.ID = indice;
         this.size = threads;
         this.tamanho = tamMat;
         this.contAlive = 0;
-        this.lockCont = 0;
-        this.synchroB = SB;
     }
 
     @Override
     public void run() {
-        for (int i = 0; i < JogoVida.nGeracoes; i++) {
-            StartGeneration(Dividir(size), ID, synchroB);
-            bloquear();
-            if (lockCont > 4 && JogoVida.lockContador.isLocked()) {
-                JogoVida.lockContador.unlock();
-            }
-            synchronized (JogoVida.lockContador) {};
-        }
+        StartGeneration(Dividir(size), ID);
     }
 
-    private synchronized void bloquear() {
-        Incrementar();
-        if (lockCont < 5 && !JogoVida.lockContador.isLocked()) {
-            JogoVida.lockContador.lock();
-        }
-    }
-
-    private int Dividir(int n) {
-        return ((int) tamanho / n);
-    }
-
-    private void StartGeneration(int n, int id, BooleanoSincronizado SyncB) {
+    private void StartGeneration(int n, int id) {
+        matrizC = new int[n][tamanho];
         int l = n * (id + 1);
         n = n * id;
         for (int i = n; i < l; i++) {
@@ -236,31 +217,45 @@ public class Threads extends Thread {
                  - Se a celula esta MORTA e tem menos de 2 ou mais de 3 vizinhos vivos ela continua MORTA.
                  */
                 //validacoes de viva
-                SyncB.setBooleano(false);
-                try {
-                    if (JogoVida.matrizA[i][j] == 1) {
-                        if (contAlive < 2 || contAlive > 3) {
-                            JogoVida.matrizB[i][j] = 0;
-                        } else if (contAlive == 2 || contAlive == 3) {
-                            JogoVida.matrizB[i][j] = 1;
-                        }
-                    } //validacoes de morta
-                    else if (contAlive == 3) {
-                        JogoVida.matrizB[i][j] = 1;
-                    } else {
-                        JogoVida.matrizB[i][j] = 0;
+                if (JogoVida.matrizA[i][j] == 1) {
+                    if (contAlive < 2 || contAlive > 3) {
+                        matrizC[i - (ID * n)][j] = 0;
+                    } else if (contAlive == 2 || contAlive == 3) {
+                        matrizC[i - (ID * n)][j] = 1;
                     }
-                } finally {
-                    SyncB.setBooleano(true);
+                } //validacoes de morta
+                else if (contAlive == 3) {
+                    matrizC[i - (ID * n)][j] = 1;
+                } else {
+                    matrizC[i - (ID * n)][j] = 0;
                 }
+                contAlive = 0;
             }
-            contAlive = 0;
         }
-        JogoVida.matrizA = JogoVida.matrizB;
-        JogoVida.matrizB = new int[tamanho][tamanho];
+        Concat(matrizC, n, l);
+        JogoVida.lockContador.countDown();
+        if (!JogoVida.lockContador.equals(0)) {
+            try {
+                JogoVida.lockContador.await();
+            } catch (InterruptedException e) {
+                System.out.println("Thread interrompida");
+            }
+        }
+        if (ID == 0) {
+            JogoVida.matrizA = JogoVida.matrizB;
+            JogoVida.matrizB = new int[tamanho][tamanho];
+        }
     }
 
-    private void Incrementar() {
-        lockCont++;
+    private void Concat(int[][] matC, int n, int l) {
+        for (int i = n; i < l; i++) {
+            for (int j = 0; j < tamanho; j++) {
+                JogoVida.matrizB[i][j] = matC[i - (ID * n)][j];
+            }
+        }
+    }
+
+    private int Dividir(int n) {
+        return ((int) tamanho / n);
     }
 }

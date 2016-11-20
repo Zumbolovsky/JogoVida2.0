@@ -20,10 +20,10 @@ public class JogoVida {
     public static void main(String[] args) throws InterruptedException {
         //entrada (.txt + quantidade de geracoes)
         try {
-            Input(/*args[0]*/"teste.txt");
-            nGeracoes = Integer.parseInt(/*args[1]*/"1000");
+            Input(args[0]);
+            nGeracoes = Integer.parseInt(args[1]);
             LoadMatriz();
-            nThreads = Integer.parseInt(/*args[2]*/"2");
+            nThreads = Integer.parseInt(args[2]);
             lockContador = new CountDownLatch(nThreads);
 
             switch (nThreads) {

@@ -1,30 +1,366 @@
 
 public class Threads extends Thread {
 
-    int ID, size, tamanho;
-    ContadorSincronizado synchroC;
-    BooleanoSincronizado synchroB;
+    private int[][] matrizC;
+    private final int ID, size, tamanho;
+    private int contAlive;
 
-    public Threads(int N1, int N2, int N3, ContadorSincronizado SC, BooleanoSincronizado SB) {
-        this.ID = N1;
-        this.size = N2;
-        this.tamanho = N3;
-        this.synchroC = SC;
-        this.synchroB = SB;
+    public Threads(int indice, int threads, int tamMat) {
+        this.ID = indice;
+        this.size = threads;
+        this.tamanho = tamMat;
+        this.contAlive = 0;
     }
 
     @Override
     public void run() {
-        for (int i = 0; i < JogoVida.nGeracoes; i++) {
-            synchronized (synchroB) {
-                synchroB.setBooleano(false);
-                JogoVida.StartGeneration(Dividir(size) * ID, synchroC);
-                synchroB.setBooleano(true);
+        int parte = Dividir();
+        if (size == 4) {
+            StartGeneration4(parte);
+        } else {
+            StartGeneration2(parte);
+        }
+    }
+
+    private void StartGeneration4(int parteAnal) {
+        matrizC = new int[parteAnal][parteAnal];
+        int inicLinha = parteAnal * (ID % 2);
+        int limLinha = parteAnal * ((ID % 2) + 1);
+
+        int inicColuna;
+        int limColuna;
+
+        switch (ID) {
+            case 0:
+            case 3:
+                inicColuna = inicLinha;
+                limColuna = limLinha;
+                break;
+            case 1:
+                inicColuna = parteAnal * ((ID % 2) - 1);
+                limColuna = parteAnal * ((ID % 2));
+                break;
+            default:
+                inicColuna = parteAnal * ((ID % 2) + 1);
+                limColuna = parteAnal * ((ID % 2) + 2);
+                break;
+        }
+        for (int i = inicLinha; i < limLinha; i++) {
+            for (int j = inicColuna; j < limColuna; j++) {
+                Comparacoes(i, j);
+                //validar o resultado e passar pra matrizB
+                /*
+                 - Se a celula esta VIVA e tem menos de 2 ou mais
+                   de 3 vizinhos vivos ela MORRE.
+                 - Uma celula VIVA, adjacente a 2 ou 3 celulas 
+                   vivas permanece VIVA.
+                 - Uma celula MORTA, adjacente a 2 ou 3 celulas
+                   vivas VIVE.
+                 - Se a celula esta MORTA e tem menos de 2 ou mais
+                   de 3 vizinhos vivos ela continua MORTA.
+                 */
+                //validacoes de viva
+                int linhaEQ = LinhaColuna(i, inicLinha);
+                int colunaEQ = LinhaColuna(j, inicColuna);
+                if (JogoVida.matrizA[i][j] == 1) {
+                    if (contAlive < 2 || contAlive > 3) {
+                        matrizC[linhaEQ][colunaEQ] = 0;
+                    } else if (contAlive == 2 || contAlive == 3) {
+                        matrizC[linhaEQ][colunaEQ] = 1;
+                    }
+                } //validacoes de morta
+                else if (contAlive == 3) {
+                    matrizC[linhaEQ][colunaEQ] = 1;
+                } else {
+                    matrizC[linhaEQ][colunaEQ] = 0;
+                }
+                contAlive = 0;
+            }
+        }
+        Concat4(matrizC, inicLinha, limLinha, inicColuna, limColuna);
+        LockThread();
+        if (ID == 0) {
+            MatBtoMatA();
+        }
+    }
+
+    private void Concat4(int[][] matC, int iL, int lL, 
+            int iC, int lC) {
+        for (int i = iL; i < lL; i++) {
+            for (int j = iC; j < lC; j++) {
+                int lEQ = LinhaColuna(i, iL);
+                int cEQ = LinhaColuna(j, iC);
+                JogoVida.matrizB[i][j] = matC[lEQ][cEQ];
             }
         }
     }
-    
-    private int Dividir(int n) {
-        return ((int) tamanho / n);
+
+    private int Dividir() {
+        return ((int) tamanho / 2);
+    }
+
+    private int LinhaColuna(int LC, int iLC) {
+        if (iLC != 0) {
+            return LC % 5;
+        }
+        return LC;
+    }
+
+    private void LockThread() {
+        JogoVida.lockContador.countDown();
+        if (!JogoVida.lockContador.equals(0)) {
+            try {
+                JogoVida.lockContador.await();
+            } catch (InterruptedException e) {
+                System.out.println("Thread interrompida");
+            }
+        }
+    }
+
+    private void MatBtoMatA() {
+        JogoVida.matrizA = JogoVida.matrizB;
+        JogoVida.matrizB = new int[tamanho][tamanho];
+    }
+
+    private void Comparacoes(int i, int j) {
+        //Primeira linha
+        if (i == 0) {
+            //PrimeiraLinha && primeira coluna
+            if (j == 0) {
+                //direita
+                if (JogoVida.matrizA[i][j + 1] == 1) {
+                    contAlive++;
+                }
+                //direita baixo
+                if (JogoVida.matrizA[i + 1][j + 1] == 1) {
+                    contAlive++;
+                }
+                //baixo
+                if (JogoVida.matrizA[i + 1][j] == 1) {
+                    contAlive++;
+                }
+                //Primeira Linha && ultima Coluna
+            } else if (j == tamanho - 1) {
+                //esquerda
+                if (JogoVida.matrizA[i][j - 1] == 1) {
+                    contAlive++;
+                }
+                //esquerda Baixo
+                if (JogoVida.matrizA[i + 1][j - 1] == 1) {
+                    contAlive++;
+                }
+                //baixo
+                if (JogoVida.matrizA[i + 1][j] == 1) {
+                    contAlive++;
+                }
+                //primeira linha !primeiraColuna && !ultimaColuna
+            } else {
+                //esquerda
+                if (JogoVida.matrizA[i][j - 1] == 1) {
+                    contAlive++;
+                }
+                //direita
+                if (JogoVida.matrizA[i][j + 1] == 1) {
+                    contAlive++;
+                }
+                //BaixoEsquerda
+                if (JogoVida.matrizA[i + 1][j - 1] == 1) {
+                    contAlive++;
+                }
+                //Baixo
+                if (JogoVida.matrizA[i + 1][j] == 1) {
+                    contAlive++;
+                }
+                //BaixoDireita
+                if (JogoVida.matrizA[i + 1][j + 1] == 1) {
+                    contAlive++;
+                }
+            }
+            //ultima linha
+        } else if (i == tamanho - 1) {
+            //UltimaLinha && Primeira coluna
+            if (j == 0) {
+                //cima
+                if (JogoVida.matrizA[i - 1][j] == 1) {
+                    contAlive++;
+                }
+                //cimaDireita
+                if (JogoVida.matrizA[i - 1][j + 1] == 1) {
+                    contAlive++;
+                }
+                //Direita
+                if (JogoVida.matrizA[i][j + 1] == 1) {
+                    contAlive++;
+                }
+                //UltimaLinha && ultima coluna
+            } else if (j == tamanho - 1) {
+                //cima
+                if (JogoVida.matrizA[i - 1][j] == 1) {
+                    contAlive++;
+                }
+                //cimaEsquerda
+                if (JogoVida.matrizA[i - 1][j - 1] == 1) {
+                    contAlive++;
+                }
+                //esquerda
+                if (JogoVida.matrizA[i][j - 1] == 1) {
+                    contAlive++;
+                }
+            } //ultima linha && !primeiraColuna && !ultimaColuna
+            else {
+                //Esquerda
+                if (JogoVida.matrizA[i][j - 1] == 1) {
+                    contAlive++;
+                }
+                //Direita
+                if (JogoVida.matrizA[i][j + 1] == 1) {
+                    contAlive++;
+                }
+                //Cima
+                if (JogoVida.matrizA[i - 1][j] == 1) {
+                    contAlive++;
+                }
+                //CimaEsquerda
+                if (JogoVida.matrizA[i - 1][j - 1] == 1) {
+                    contAlive++;
+                }
+                //CimaDireita
+                if (JogoVida.matrizA[i - 1][j + 1] == 1) {
+                    contAlive++;
+                }
+            }
+        }    //linhas do meio, aqui teram 3 formas diferente j == 0,
+        else //meio && primeiraColuna          //j == m - 1, outros
+        {
+            if (j == 0) {
+                //cima
+                if (JogoVida.matrizA[i - 1][j] == 1) {
+                    contAlive++;
+                }
+                //cimaDireita
+                if (JogoVida.matrizA[i - 1][j + 1] == 1) {
+                    contAlive++;
+                }
+                //Direita
+                if (JogoVida.matrizA[i][j + 1] == 1) {
+                    contAlive++;
+                }
+                //Baixo
+                if (JogoVida.matrizA[i + 1][j] == 1) {
+                    contAlive++;
+                }
+                //BaixoDireita
+                if (JogoVida.matrizA[i + 1][j + 1] == 1) {
+                    contAlive++;
+                }
+            } //Meio && Ultima Coluna
+            else if (j == tamanho - 1) {
+                //cima
+                if (JogoVida.matrizA[i - 1][j] == 1) {
+                    contAlive++;
+                }
+                //cimaEsquerda
+                if (JogoVida.matrizA[i - 1][j - 1] == 1) {
+                    contAlive++;
+                }
+                //Esquerda
+                if (JogoVida.matrizA[i][j - 1] == 1) {
+                    contAlive++;
+                }
+                //Baixo
+                if (JogoVida.matrizA[i + 1][j] == 1) {
+                    contAlive++;
+                }
+                //BaixoEsquerda
+                if (JogoVida.matrizA[i + 1][j - 1] == 1) {
+                    contAlive++;
+                }
+            } //Meio && !primeiraColuna && !ultimaColuna
+            else {
+                //Cima
+                if (JogoVida.matrizA[i - 1][j] == 1) {
+                    contAlive++;
+                }
+                //CimaEsquerda
+                if (JogoVida.matrizA[i - 1][j - 1] == 1) {
+                    contAlive++;
+                }
+                //CimaDireita
+                if (JogoVida.matrizA[i - 1][j + 1] == 1) {
+                    contAlive++;
+                }
+                //Esquerda
+                if (JogoVida.matrizA[i][j - 1] == 1) {
+                    contAlive++;
+                }
+                //Direita
+                if (JogoVida.matrizA[i][j + 1] == 1) {
+                    contAlive++;
+                }
+                //Baixo
+                if (JogoVida.matrizA[i + 1][j] == 1) {
+                    contAlive++;
+                }
+                //BaixoEsquerda
+                if (JogoVida.matrizA[i + 1][j - 1] == 1) {
+                    contAlive++;
+                }
+                //BaixoDireita
+                if (JogoVida.matrizA[i + 1][j + 1] == 1) {
+                    contAlive++;
+                }
+            }
+        }
+    }
+
+    private void StartGeneration2(int inicLinha) {
+        matrizC = new int[inicLinha][tamanho];
+        int limLinha = inicLinha * ((ID % 2) + 1);
+        inicLinha = inicLinha * (ID % 2);
+        for (int i = inicLinha; i < limLinha; i++) {
+            for (int j = 0; j < tamanho; j++) {
+                Comparacoes(i, j);
+                //validar o resultado e passar pra matrizB
+                /*
+                 - Se a celula esta VIVA e tem menos de 2 ou mais
+                   de 3 vizinhos vivos ela MORRE.
+                 - Uma celula VIVA, adjacente a 2 ou 3 celulas 
+                   vivas permanece VIVA.
+                 - Uma celula MORTA, adjacente a 2 ou 3 celulas 
+                   vivas VIVE.
+                 - Se a celula esta MORTA e tem menos de 2 ou mais
+                   de 3 vizinhos vivos ela continua MORTA.
+                 */
+                //validacoes de viva
+                int linhaEQ = i - (ID * inicLinha);
+                if (JogoVida.matrizA[i][j] == 1) {
+                    if (contAlive < 2 || contAlive > 3) {
+                        matrizC[linhaEQ][j] = 0;
+                    } else if (contAlive == 2 || contAlive == 3) {
+                        matrizC[linhaEQ][j] = 1;
+                    }
+                } //validacoes de morta
+                else if (contAlive == 3) {
+                    matrizC[linhaEQ][j] = 1;
+                } else {
+                    matrizC[linhaEQ][j] = 0;
+                }
+                contAlive = 0;
+            }
+        }
+        Concat2(inicLinha, limLinha);
+        LockThread();
+        if (ID == 0) {
+            MatBtoMatA();
+        }
+    }
+
+    private void Concat2(int inicLinha, int limLinha) {
+        for (int i = inicLinha; i < limLinha; i++) {
+            for (int j = 0; j < tamanho; j++) {
+                int linhaEQ = i - (ID * inicLinha);
+                JogoVida.matrizB[i][j] = matrizC[linhaEQ][j];
+            }
+        }
     }
 }
